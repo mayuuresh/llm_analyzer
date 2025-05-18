@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Model Comparison</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>AI Model Comparison</h2>
+            </div>
+            <div class="new-chat" id="new-chat">
+                <i class="fas fa-plus"></i> New Chat
+            </div>
+            <div class="history" id="chat-history">
+                <!-- Chat history will be populated here -->
+            </div>
+            <div class="sidebar-footer">
+                <div class="models-info">
+                    <p>Models: GPT-4, Llama, Mistral, DeepSeek, Gemini</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main">
+            <div class="chat-container" id="chat-container">
+                <div class="welcome-message">
+                    <h1>AI Model Comparison</h1>
+                    <p>Ask a question and get the best response from 5 different AI models.</p>
+                    <p>The system will evaluate responses from GPT-4, Llama, Mistral, DeepSeek, and Gemini to show you the most accurate one.</p>
+                </div>
+                <!-- Chat messages will be displayed here -->
+            </div>
+            
+            <div class="input-container">
+                <form id="prompt-form">
+                    <div class="input-wrapper">
+                        <textarea id="prompt-input" placeholder="Type your message here..." rows="1"></textarea>
+                        <button type="submit" id="send-button">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+                <div class="disclaimer">
+                    <p>This application compares responses from multiple AI models and shows the best one.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="model-details-panel" id="model-details-panel">
+            <div class="panel-header">
+                <h3>All Model Responses</h3>
+                <button id="close-panel"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="panel-content" id="panel-content">
+                <!-- Model responses will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p>Querying AI models...</p>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
