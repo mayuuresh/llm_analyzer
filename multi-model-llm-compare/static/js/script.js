@@ -25,29 +25,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Create a new chat
   function createNewChat() {
-    // Generate a unique ID for the conversation
     const conversationId = Date.now().toString();
     currentConversationId = conversationId;
 
-    // Add to conversations array
     conversations.push({
       id: conversationId,
       messages: [],
     });
 
-    // Clear chat container
     chatContainer.innerHTML = `
-              <div class="welcome-message">
-                  <h1>AI Model Comparison</h1>
-                  <p>Ask a question and get the best response from 5 different AI models.</p>
-                  <p>The system will evaluate responses from GPT-4, Llama, Mistral, DeepSeek, and Gemini to show you the most accurate one.</p>
-              </div>
-          `;
+      <div class="welcome-message">
+        <h1>AI Model Comparison</h1>
+        <p>Ask a question and get the best response from 5 different AI models.</p>
+        <p>The system will evaluate responses from GPT-4, Llama, Mistral, DeepSeek, and Gemini to show you the most accurate one.</p>
+      </div>
+    `;
 
-    // Update chat history in sidebar
     updateChatHistory();
-
-    // Focus on input
     promptInput.focus();
   }
 
@@ -56,7 +50,6 @@ document.addEventListener("DOMContentLoaded", () => {
     chatHistory.innerHTML = "";
 
     conversations.forEach((conversation) => {
-      // Get the first user message as the title, or use a default
       let title = "New Conversation";
       const firstUserMessage = conversation.messages.find(
         (msg) => msg.role === "user"
@@ -93,11 +86,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!conversation) return;
 
     currentConversationId = conversationId;
-
-    // Clear chat container
     chatContainer.innerHTML = "";
 
-    // Add messages to chat container
     conversation.messages.forEach((message) => {
       addMessageToChat(
         message.role,
@@ -107,174 +97,239 @@ document.addEventListener("DOMContentLoaded", () => {
       );
     });
 
-    // Update chat history highlighting
     updateChatHistory();
   }
 
   // Add a message to the chat
   function addMessageToChat(role, content, model = null, allResponses = null) {
-    // Remove welcome message if it exists
     const welcomeMessage = chatContainer.querySelector(".welcome-message");
     if (welcomeMessage) {
-      chatContainer.removeChild(welcomeMessage);
+        chatContainer.removeChild(welcomeMessage);
     }
 
     const messageDiv = document.createElement("div");
     messageDiv.className = `message message-${role}`;
 
+    const formattedContent = formatMessageContent(content);
+
     if (role === "user") {
-      // For user messages, display immediately
-      messageDiv.innerHTML = `<div class="message-content">${content}</div>`;
-      chatContainer.appendChild(messageDiv);
+        messageDiv.innerHTML = `<div class="message-content">${formattedContent}</div>`;
     } else {
-      // For AI responses, create typing indicator first
-      messageDiv.innerHTML = `
-                <div class="message-content">
-                    <div class="typing-indicator">
-                        <span></span><span></span><span></span>
-                    </div>
-                </div>
-                ${
-                  model
+        messageDiv.innerHTML = `
+            <div class="message-content">${formattedContent}</div>
+            ${
+                model
                     ? `
-                <div class="message-meta">
-                    <span class="model-badge">${model}</span>
-                    ${
-                      allResponses
-                        ? '<span class="view-all-responses">View all responses</span>'
+            <div class="message-meta">
+                <span class="model-badge">${model}</span>
+                ${
+                    allResponses
+                        ? '<button class="view-all-responses">View all responses</button>'
                         : ""
-                    }
-                </div>`
-                    : ""
                 }
-            `;
-
-      chatContainer.appendChild(messageDiv);
-
-      // Start typewriter effect after a short delay
-      setTimeout(() => {
-        typeWriterEffect(messageDiv, content, model, allResponses);
-      }, 50);
+            </div>`
+                    : ""
+            }
+        `;
     }
 
-    // Scroll to bottom
+    chatContainer.appendChild(messageDiv);
+    
+    // Add event listener for "View all responses" if it exists
+    if (model && allResponses) {
+        const viewAllBtn = messageDiv.querySelector(".view-all-responses");
+        viewAllBtn.addEventListener("click", () => {
+            showAllResponses(allResponses, content, model);
+        });
+    }
+
     chatContainer.scrollTop = chatContainer.scrollHeight;
 
-    // Save message to current conversation
     if (currentConversationId) {
-      const conversation = conversations.find(
-        (conv) => conv.id === currentConversationId
-      );
-      if (conversation) {
-        conversation.messages.push({
-          role,
-          content,
-          model,
-          allResponses,
-        });
-      }
-    }
-
-    // Update chat history
-    updateChatHistory();
-  }
-  function typeWriterEffect(messageDiv, fullText, model, allResponses) {
-    const contentDiv = messageDiv.querySelector(".message-content");
-    contentDiv.innerHTML = ""; // Clear typing indicator
-
-    let i = 0;
-    const speed = 20; // Adjust typing speed (lower = faster)
-    const paragraphDelay = 500; // Delay between paragraphs
-
-    function type() {
-      if (i < fullText.length) {
-        // Handle paragraph breaks
-        if (
-          fullText.substring(i, i + 4) === "<br>" ||
-          fullText.substring(i, i + 6) === "<br />" ||
-          fullText.substring(i, i + 7) === "<br/>"
-        ) {
-          const br = document.createElement("br");
-          contentDiv.appendChild(br);
-          i += fullText.substring(i, i + 7).startsWith("<br/>")
-            ? 5
-            : fullText.substring(i, i + 6).startsWith("<br />")
-            ? 6
-            : 4;
-          setTimeout(type, paragraphDelay);
-        } else {
-          // Add character by character
-          contentDiv.innerHTML += fullText.charAt(i);
-          i++;
-          setTimeout(type, speed);
-        }
-
-        // Scroll to bottom as text appears
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-      } else {
-        // Typing complete - add model info if applicable
-        if (model) {
-          const metaHTML = `
-                        <div class="message-meta">
-                            <span class="model-badge">${model}</span>
-                            ${
-                              allResponses
-                                ? '<span class="view-all-responses">View all responses</span>'
-                                : ""
-                            }
-                        </div>
-                    `;
-
-          // Add event listener to "View all responses" if applicable
-          if (allResponses) {
-            const tempDiv = document.createElement("div");
-            tempDiv.innerHTML = metaHTML;
-            messageDiv.appendChild(tempDiv.firstChild);
-
-            const viewAllButton = messageDiv.querySelector(
-              ".view-all-responses"
-            );
-            viewAllButton.addEventListener("click", () => {
-              showAllResponses(allResponses, fullText, model);
+        const conversation = conversations.find(
+            (conv) => conv.id === currentConversationId
+        );
+        if (conversation) {
+            conversation.messages.push({
+                role,
+                content,
+                model,
+                allResponses,
             });
-          } else {
-            messageDiv.innerHTML += metaHTML;
-          }
         }
-      }
     }
 
-    type();
+    updateChatHistory();
+}
+
+  // Improved markdown formatting function
+  function formatMessageContent(content) {
+    if (!content) return '';
+
+    // Enhanced table processing that handles malformed tables
+    content = content.replace(
+        /((?:\|.*\|(?:\r?\n|\r))((?:\|.*\|(?:\r?\n|\r)?)+))/g, // Fixed the regular expression
+        (match) => {
+            // Split into lines and clean up
+            const lines = match.split('\n')
+                .filter(line => line.trim() && line.includes('|'))
+                .map(line => line.trim());
+
+            if (lines.length < 2) return match; // Not a valid table
+
+            let tableHTML = '<table>';
+            
+            // Process each line
+            lines.forEach((line, index) => {
+                const cells = line.split('|')
+                    .map(cell => cell.trim())
+                    .filter(cell => cell); // Remove empty cells from split
+                
+                if (index === 0) {
+                    // Header row
+                    tableHTML += '<thead><tr>';
+                    cells.forEach(cell => {
+                        tableHTML += `<th>${cell}</th>`;
+                    });
+                    tableHTML += '</tr></thead><tbody>';
+                } else {
+                    // Data row
+                    tableHTML += '<tr>';
+                    cells.forEach(cell => {
+                        // Handle empty cells
+                        const content = cell || '&nbsp;';
+                        tableHTML += `<td>${content}</td>`;
+                    });
+                    tableHTML += '</tr>';
+                }
+            });
+            
+            tableHTML += '</tbody></table>';
+            return tableHTML;
+        }
+    );
+
+
+    // Split content into lines
+    let lines = content.split('\n');
+    let formattedLines = [];
+    let inCodeBlock = false;
+    let inList = false;
+    let listType = 'ul';
+
+    lines.forEach((line, index) => {
+      // Handle code blocks
+      if (line.startsWith('```')) {
+        if (!inCodeBlock) {
+          formattedLines.push('<pre><code>');
+          inCodeBlock = true;
+        } else {
+          formattedLines.push('</code></pre>');
+          inCodeBlock = false;
+        }
+        return;
+      }
+
+      if (inCodeBlock) {
+        formattedLines.push(line);
+        return;
+      }
+
+      // Handle headers
+      if (line.startsWith('# ')) {
+        formattedLines.push(`<h1>${line.slice(2)}</h1>`);
+      } else if (line.startsWith('## ')) {
+        formattedLines.push(`<h2>${line.slice(3)}</h2>`);
+      } else if (line.startsWith('### ')) {
+        formattedLines.push(`<h3>${line.slice(4)}</h3>`);
+      }
+      // Handle bullet points
+      else if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+        if (!inList || listType !== 'ul') {
+          if (inList) formattedLines.push(`</${listType}>`);
+          formattedLines.push('<ul>');
+          inList = true;
+          listType = 'ul';
+        }
+        formattedLines.push(`<li>${line.trim().slice(2)}</li>`);
+      }
+      // Handle numbered lists
+      else if (/^\d+\.\s/.test(line.trim())) {
+        if (!inList || listType !== 'ol') {
+          if (inList) formattedLines.push(`</${listType}>`);
+          formattedLines.push('<ol>');
+          inList = true;
+          listType = 'ol';
+        }
+        formattedLines.push(`<li>${line.trim().replace(/^\d+\.\s/, '')}</li>`);
+      }
+      // Close lists if next line is not a list item
+      else {
+        if (inList) {
+          formattedLines.push(`</${listType}>`);
+          inList = false;
+        }
+        // Handle bold text
+        line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // Handle italic text
+        line = line.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        // Handle inline code
+        line = line.replace(/`(.*?)`/g, '<code>$1</code>');
+        
+        if (line.trim()) {
+          formattedLines.push(`<p>${line}</p>`);
+        } else if (!inList) {
+          formattedLines.push('<br>');
+        }
+      }
+    });
+
+    // Close any open lists at the end
+    if (inList) {
+      formattedLines.push(`</${listType}>`);
+    }
+
+    return formattedLines.join('\n');
   }
+
   // Show all model responses in the side panel
   function showAllResponses(responses, bestResponse, bestModel) {
+    // Clear previous content
     panelContent.innerHTML = "";
+
+    // Add header with comparison info
+    const headerDiv = document.createElement("div");
+    headerDiv.className = "panel-header-info";
+    headerDiv.innerHTML = `
+        <h3>Comparing Model Responses</h3>
+        <p>The best response was selected from <strong>${Object.keys(responses).length}</strong> models.</p>
+    `;
+    panelContent.appendChild(headerDiv);
 
     // Add each model's response
     for (const [model, response] of Object.entries(responses)) {
-      const responseDiv = document.createElement("div");
-      responseDiv.className = "model-response";
+        const responseDiv = document.createElement("div");
+        responseDiv.className = "model-response";
 
-      const isBest = model === bestModel;
+        const isBest = model === bestModel;
 
-      responseDiv.innerHTML = `
-                  <h4>
-                      ${model}
-                      ${
-                        isBest
-                          ? '<span class="model-badge">Best Response</span>'
-                          : ""
-                      }
-                  </h4>
-                  <div class="model-response-content">${response}</div>
-              `;
+        responseDiv.innerHTML = `
+            <div class="model-response-header">
+                <h4>${model}</h4>
+                ${isBest ? '<span class="best-model-badge">Best Response</span>' : ''}
+            </div>
+            <div class="model-response-content">${formatMessageContent(response)}</div>
+        `;
 
-      panelContent.appendChild(responseDiv);
+        panelContent.appendChild(responseDiv);
     }
 
     // Open the panel
     modelDetailsPanel.classList.add("open");
-  }
+    
+    // Scroll to top of panel
+    panelContent.scrollTop = 0;
+}
 
   // Handle form submission
   promptForm.addEventListener("submit", async (e) => {
@@ -283,23 +338,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const prompt = promptInput.value.trim();
     if (!prompt) return;
 
-    // Create a new conversation if none exists
     if (!currentConversationId) {
       createNewChat();
     }
 
-    // Add user message to chat
     addMessageToChat("user", prompt);
 
-    // Clear input
     promptInput.value = "";
     promptInput.style.height = "auto";
-
-    // Show loading overlay
     loadingOverlay.style.display = "flex";
 
     try {
-      // Send request to API
       const response = await fetch("/api/query", {
         method: "POST",
         headers: {
@@ -314,7 +363,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const data = await response.json();
 
-      // Add AI response to chat
       addMessageToChat(
         "ai",
         data.response,
@@ -328,15 +376,12 @@ document.addEventListener("DOMContentLoaded", () => {
         "Sorry, there was an error processing your request. Please try again."
       );
     } finally {
-      // Hide loading overlay
       loadingOverlay.style.display = "none";
     }
   });
 
-  // New chat button
+  // Event listeners
   newChatButton.addEventListener("click", createNewChat);
-
-  // Close panel button
   closePanelButton.addEventListener("click", () => {
     modelDetailsPanel.classList.remove("open");
   });

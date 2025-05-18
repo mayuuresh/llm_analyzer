@@ -13,17 +13,31 @@ gpt4_client = OpenAI(
 # Initialize OpenRouter clients
 openrouter_client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
-    api_key="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"
+    api_key="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"
 )
 
 # Initialize Gemini
 gemini_client = genai.Client(api_key="AIzaSyCE9EGd7AIPfq9JQlBAfV7H4axNZ5eZTuA")
 
+def get_structured_prompt(prompt):
+    return f"""Please provide a detailed, well-structured response to the following query. 
+Use markdown formatting including:
+- Headers (#, ##, ###)
+- Lists (- or 1.)
+- Tables (| Syntax | Description |)
+- Code blocks (```)
+- Bold (**) and italic (*) text where appropriate
+- Proper paragraphs with line breaks
+
+Query: {prompt}
+
+Response:"""
+
 def get_gpt4_response(prompt):
     try:
         completion = gpt4_client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}]
+            messages=[{"role": "user", "content": get_structured_prompt(prompt)}]
         )
         if completion and completion.choices and len(completion.choices) > 0:
             return completion.choices[0].message.content
@@ -35,7 +49,7 @@ def get_llama_response(prompt):
     try:
         completion = openrouter_client.chat.completions.create(
             model="meta-llama/llama-3.3-8b-instruct:free",
-            messages=[{"role": "user", "content": prompt}]
+            messages=[{"role": "user", "content": get_structured_prompt(prompt)}]
         )
         if completion and completion.choices and len(completion.choices) > 0:
             return completion.choices[0].message.content
@@ -47,7 +61,7 @@ def get_mistral_response(prompt):
     try:
         completion = openrouter_client.chat.completions.create(
             model="mistralai/mistral-nemo:free",
-            messages=[{"role": "user", "content": prompt}]
+            messages=[{"role": "user", "content": get_structured_prompt(prompt)}]
         )
         if completion and completion.choices and len(completion.choices) > 0:
             return completion.choices[0].message.content
@@ -59,7 +73,7 @@ def get_deepseek_response(prompt):
     try:
         completion = openrouter_client.chat.completions.create(
             model="deepseek/deepseek-chat-v3-0324:free",
-            messages=[{"role": "user", "content": prompt}]
+            messages=[{"role": "user", "content": get_structured_prompt(prompt)}]
         )
         if completion and completion.choices and len(completion.choices) > 0:
             return completion.choices[0].message.content
@@ -71,7 +85,7 @@ def get_gemini_response(prompt):
     try:
         response = gemini_client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=prompt
+            contents=get_structured_prompt(prompt)
         )
         if response and hasattr(response, 'text'):
             return response.text
