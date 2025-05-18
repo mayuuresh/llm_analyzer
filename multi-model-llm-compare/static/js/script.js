@@ -9,8 +9,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const panelContent = document.getElementById("panel-content");
   const loadingOverlay = document.getElementById("loading-overlay");
 
-  const conversations = [];
-  let currentConversationId = null;
+ 
+// Load conversations from localStorage
+const loadConversations = () => {
+  const savedConversations = localStorage.getItem('aiChatConversations');
+  return savedConversations ? JSON.parse(savedConversations) : [];
+};
+
+// Save conversations to localStorage
+const saveConversations = () => {
+  localStorage.setItem('aiChatConversations', JSON.stringify(conversations));
+};
+
+// Initialize with saved conversations or empty array
+const conversations = loadConversations();
+let currentConversationId = conversations.length > 0 ? conversations[0].id : null;
 
   // Auto-resize textarea
   promptInput.addEventListener("input", function () {
@@ -31,7 +44,11 @@ document.addEventListener("DOMContentLoaded", () => {
     conversations.push({
       id: conversationId,
       messages: [],
+      createdAt: new Date().toISOString()
+
     });
+    conversations.unshift(newConversation); // Add to beginning of array
+    saveConversations();
 
     chatContainer.innerHTML = `
       <div class="welcome-message">
@@ -48,36 +65,41 @@ document.addEventListener("DOMContentLoaded", () => {
   // Update chat history in sidebar
   function updateChatHistory() {
     chatHistory.innerHTML = "";
-
+  
     conversations.forEach((conversation) => {
-      let title = "New Conversation";
-      const firstUserMessage = conversation.messages.find(
-        (msg) => msg.role === "user"
-      );
-      if (firstUserMessage) {
-        title =
-          firstUserMessage.content.length > 25
-            ? firstUserMessage.content.substring(0, 25) + "..."
-            : firstUserMessage.content;
-      }
-
       const historyItem = document.createElement("div");
       historyItem.className = "history-item";
-      historyItem.textContent = title;
       historyItem.dataset.conversationId = conversation.id;
-
-      if (conversation.id === currentConversationId) {
-        historyItem.style.backgroundColor = "var(--highlight-color)";
+  
+      // Find first user message for title
+      const firstUserMessage = conversation.messages.find(msg => msg.role === "user");
+      let title = "New Chat";
+      if (firstUserMessage) {
+        title = firstUserMessage.content.length > 25
+          ? firstUserMessage.content.substring(0, 25) + "..."
+          : firstUserMessage.content;
       }
-
+  
+      // Create date string
+      const date = new Date(conversation.createdAt);
+      const dateStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+      historyItem.innerHTML = `
+        <div class="history-item-title">${title}</div>
+        <div class="history-item-date">${dateStr}</div>
+      `;
+  
+      if (conversation.id === currentConversationId) {
+        historyItem.classList.add("active");
+      }
+  
       historyItem.addEventListener("click", () => {
         loadConversation(conversation.id);
       });
-
+  
       chatHistory.appendChild(historyItem);
     });
   }
-
   // Load a conversation
   function loadConversation(conversationId) {
     const conversation = conversations.find(
@@ -96,7 +118,11 @@ document.addEventListener("DOMContentLoaded", () => {
         message.allResponses
       );
     });
-
+    if (conversations.length > 0) {
+      loadConversation(conversations[0].id);
+    } else {
+      createNewChat();
+    }
     updateChatHistory();
   }
 
@@ -145,22 +171,37 @@ document.addEventListener("DOMContentLoaded", () => {
 
     chatContainer.scrollTop = chatContainer.scrollHeight;
 
-    if (currentConversationId) {
-        const conversation = conversations.find(
-            (conv) => conv.id === currentConversationId
-        );
-        if (conversation) {
-            conversation.messages.push({
-                role,
-                content,
-                model,
-                allResponses,
-            });
-        }
+     if (currentConversationId) {
+      const conversation = conversations.find(
+        (conv) => conv.id === currentConversationId
+      );
+      if (conversation) {
+        conversation.messages.push({
+          role,
+          content,
+          model,
+          allResponses,
+          timestamp: new Date().toISOString()
+        });
+        saveConversations();
+      }
     }
+
 
     updateChatHistory();
 }
+// Add this to your existing code
+const clearHistoryButton = document.createElement("button");
+clearHistoryButton.textContent = "Clear History";
+clearHistoryButton.className = "clear-history";
+clearHistoryButton.addEventListener("click", () => {
+  if (confirm("Are you sure you want to clear all chat history?")) {
+    localStorage.removeItem('aiChatConversations');
+    conversations = [];
+    currentConversationId = null;
+    createNewChat();
+  }
+});
 
   // Improved markdown formatting function
   function formatMessageContent(content) {
@@ -331,54 +372,62 @@ document.addEventListener("DOMContentLoaded", () => {
     panelContent.scrollTop = 0;
 }
 
-  // Handle form submission
-  promptForm.addEventListener("submit", async (e) => {
+
+promptInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
+    promptForm.dispatchEvent(new Event("submit"));
+  }
+});
 
-    const prompt = promptInput.value.trim();
-    if (!prompt) return;
+promptForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    if (!currentConversationId) {
-      createNewChat();
+  const prompt = promptInput.value.trim();
+  if (!prompt) return;
+
+  if (!currentConversationId) {
+    createNewChat();
+  }
+
+  addMessageToChat("user", prompt);
+
+  promptInput.value = "";
+  promptInput.style.height = "auto";
+  loadingOverlay.style.display = "flex";
+
+  try {
+    const response = await fetch("/api/query", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prompt }),
+    });
+
+    if (!response.ok) {
+      throw new Error("API request failed");
     }
 
-    addMessageToChat("user", prompt);
+    const data = await response.json();
 
-    promptInput.value = "";
-    promptInput.style.height = "auto";
-    loadingOverlay.style.display = "flex";
+    addMessageToChat(
+      "ai",
+      data.response,
+      data.best_model,
+      data.all_responses
+    );
+  } catch (error) {
+    console.error("Error:", error);
+    addMessageToChat(
+      "ai",
+      "Sorry, there was an error processing your request. Please try again."
+    );
+  } finally {
+    loadingOverlay.style.display = "none";
+  }
+});
 
-    try {
-      const response = await fetch("/api/query", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ prompt }),
-      });
-
-      if (!response.ok) {
-        throw new Error("API request failed");
-      }
-
-      const data = await response.json();
-
-      addMessageToChat(
-        "ai",
-        data.response,
-        data.best_model,
-        data.all_responses
-      );
-    } catch (error) {
-      console.error("Error:", error);
-      addMessageToChat(
-        "ai",
-        "Sorry, there was an error processing your request. Please try again."
-      );
-    } finally {
-      loadingOverlay.style.display = "none";
-    }
-  });
 
   // Event listeners
   newChatButton.addEventListener("click", createNewChat);

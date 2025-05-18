@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # Initialize OpenAI client for GPT-4
 gpt4_client = OpenAI(
-    api_key="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"
+    api_key="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"
 )
 
 # Initialize OpenRouter clients

@@ -306,7 +306,34 @@ body {
   padding: 8px 0;
   max-height: 200px;
 }
+.history-item {
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
 
+.history-item:hover {
+  background-color: var(--highlight-color);
+}
+
+.history-item.active {
+  background-color: var(--highlight-color);
+}
+
+.history-item-title {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-item-date {
+  font-size: 11px;
+  color: var(--light-text-color);
+  margin-top: 4px;
+}
 #send-button {
   background: none;
   border: none;
